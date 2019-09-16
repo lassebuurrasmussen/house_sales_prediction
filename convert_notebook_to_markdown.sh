@@ -1,1 +1,1 @@
-jupyter nbconvert main.ipynb --to markdown
+jupyter nbconvert main.ipynb --to markdown --output README.md
