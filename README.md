@@ -1,50 +1,48 @@
 
-Import modules
+Welcome! In this notebook I look at a data set with houses and a range of features.
+I will do some exploratory data analysis to learn a bit about the trends in the data.
+Then I will try to make a regressor to predict the prices of the houses based on the features.
+
+The point of this notebook is to illustrate my capabilities (and hopefully not lack thereof).
+For that reason I will go very through the process very pedagogically.
+So apologies to those who'd like for this to be more fast-paced :-)
+
+So for those of you who'd like to follow along, go ahead and install Anaconda if you don't have it already.
+You can download it from https://www.anaconda.com/distribution/.
+Now go ahead and make a fresh conda environment:
+
+`conda create -yn house_prices`
+
+And let's install some of the packages that we will need for sure.
+
+`conda install -yn house_prices pandas numpy seaborn scikit-learn`
+
+And finaly we can go ahead and activate the environment.
+
+`conda activate house_prices`
+
+Great. Now that that's out of the way, let's jump into it!
+We start by importing the newly installed modules
+
+# Data exploration
 
 
 ```python
 import numpy as np
 import pandas as pd
+import seaborn as sns
+import matplotlib.pyplot as plt
 ```
 
-Let's load the data and see what we have
+The data that I will be using is the *House Sales in King County, USA* data set.
+It is available on Kaggle at https://www.kaggle.com/harlfoxem/housesalesprediction.
+After downloading it we can load it up and display it.
 
 
 ```python
-df = pd.read_csv("./kc_house_data.csv")
-
-print(df.info())
-df.head()
+house_data = pd.read_csv("kc_house_data.csv")
+house_data.head()
 ```
-
-    <class 'pandas.core.frame.DataFrame'>
-    RangeIndex: 21613 entries, 0 to 21612
-    Data columns (total 21 columns):
-    id               21613 non-null int64
-    date             21613 non-null object
-    price            21613 non-null float64
-    bedrooms         21613 non-null int64
-    bathrooms        21613 non-null float64
-    sqft_living      21613 non-null int64
-    sqft_lot         21613 non-null int64
-    floors           21613 non-null float64
-    waterfront       21613 non-null int64
-    view             21613 non-null int64
-    condition        21613 non-null int64
-    grade            21613 non-null int64
-    sqft_above       21613 non-null int64
-    sqft_basement    21613 non-null int64
-    yr_built         21613 non-null int64
-    yr_renovated     21613 non-null int64
-    zipcode          21613 non-null int64
-    lat              21613 non-null float64
-    long             21613 non-null float64
-    sqft_living15    21613 non-null int64
-    sqft_lot15       21613 non-null int64
-    dtypes: float64(5), int64(15), object(1)
-    memory usage: 3.5+ MB
-    None
-
 
 
 
@@ -134,29 +132,97 @@ df.head()
 
 
 
-Before we go any further we should split the data into training and testing data. We wouldn't wanna spoil our opportunity to get a realistic estimate of our performance! 
+Before we go any further we should split the data into training and testing data.
+We wouldn't wanna spoil our opportunity to get a realistic estimate of our performance!
 
 
 ```python
 # Set seed for reproducibility
 np.random.seed(324976)
 
-n = len(df)
-df_train = df.loc[np.random.choice(df.index, int(0.7 * n))]
-df_test = df[~df.index.isin(df_train.index)]
+# Randomly pick 70% of the data as tranining points
+df = house_data.sample(frac=0.7)
 
-[d.shape for d in [df_train, df_test]]
+# Assign the remaining points to the test set
+df_test = house_data[~house_data.index.isin(df.index)]
+
+print(house_data.shape)
+[d.shape for d in [df, df_test]]
+```
+
+    (21613, 21)
+
+
+
+
+
+    [(15129, 21), (6484, 21)]
+
+
+
+Okay, so far so good. We see that we have a total of 21,613 rows (or houses) of which we put away 30% for our test set.
+Thus we have 15129 remaining points to learn from.
+
+One of the first helpful things to do to gain insight into our data is to make some basic histograms.
+To declutter the notebook, I've defined my plotting functions in the `plotting_functions.py` module.
+
+
+```python
+# Import custom histogram function
+from plotting_functions import histogram
+
+histogram(df=df)
 ```
 
 
+![png](README_files/README_8_0.png)
 
 
-    [(15129, 21), (10718, 21)]
+Another useful first step is to call the `.info()` function 
 
 
+```python
+df.info()
+```
 
- 
-Okay, so far so good
+    <class 'pandas.core.frame.DataFrame'>
+    Int64Index: 15129 entries, 6969 to 5648
+    Data columns (total 21 columns):
+    id               15129 non-null int64
+    date             15129 non-null object
+    price            15129 non-null float64
+    bedrooms         15129 non-null int64
+    bathrooms        15129 non-null float64
+    sqft_living      15129 non-null int64
+    sqft_lot         15129 non-null int64
+    floors           15129 non-null float64
+    waterfront       15129 non-null int64
+    view             15129 non-null int64
+    condition        15129 non-null int64
+    grade            15129 non-null int64
+    sqft_above       15129 non-null int64
+    sqft_basement    15129 non-null int64
+    yr_built         15129 non-null int64
+    yr_renovated     15129 non-null int64
+    zipcode          15129 non-null int64
+    lat              15129 non-null float64
+    long             15129 non-null float64
+    sqft_living15    15129 non-null int64
+    sqft_lot15       15129 non-null int64
+    dtypes: float64(5), int64(15), object(1)
+    memory usage: 2.5+ MB
+
+
+Now we have a little more information about the columns.
+We have general info about the size and number of each type of room;
+the year of which the house was built and renovated;
+some qualitative notions of "condition" and "grade" as well as "view";
+and information about the location in the form of coordinates and zipcode.
+
+A few questions come to mind regarding the columns that are less clear.
+What is the difference between sqft_living and sqft_living15 for example?
+And what exactly is in the columns waterfront, condition, grade?
+To answer these questions we can go back to Kaggle where we found the data.
 
 
 ```python
